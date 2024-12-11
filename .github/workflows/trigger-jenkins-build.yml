@@ -197,8 +197,8 @@ jobs:
           mkdir -p ~/.gnupg
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import || { echo "Failed to import GPG key"; exit 1; }
 
-          # Ensure key was imported successfully
-          gpg --list-secret-keys --keyid-format LONG
+          # Debugging step: Check if the key was imported successfully
+          gpg --list-secret-keys --keyid-format LONG || { echo "No GPG keys found. Exiting."; exit 1; }
 
           git config user.name "${{ github.actor }}"
           git config user.email "${{ secrets.GIT_EMAIL }}"
