@@ -197,31 +197,6 @@ jobs:
           cat "$JSON_FILE"
 
           # Check for changes before committing
-          git diff --exit-code --quiet
-          if [ $? -ne 0 ]; then
-            echo "Changes detected, preparing to commit."
-
-            # Configure git for commit
-            git config user.name "${{ github.actor }}"
-            git config user.email "${{ secrets.GIT_EMAIL }}"
-            git config --global commit.gpgSign true
-            git config --global user.signingkey "${{ secrets.GPG_KEY_ID }}"
-
-            # Pull the latest changes before committing
-            git fetch origin
-            git stash push -m "Stashing untracked files"
-            git pull --rebase origin main || {
-              echo "Merge conflict occurred. Attempting to resolve."
-              git merge --abort
-              exit 1
-            }
-
-            # Add the JSON file to the commit
-            git add "$JSON_FILE"
-            git commit -S -m "Update build numbers in JSON for build ${{ env.LATEST_BUILD_NUMBER }} with status ${{ env.BUILD_STATUS }} [skip ci]"
-
-            # Push the changes to the repository
-            git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:${GITHUB_REF#refs/heads/}
-          else
-            echo "No changes detected, skipping commit."
-          fi
+          git add "$JSON_FILE"
+          git diff --cached --quiet || git commit -m "Updated build numbers"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${GITHUB_REF#refs/heads/}
