@@ -1,0 +1,2 @@
+curl -sO http://192.168.241.134:8081/jnlpJars/agent.jar
+java -jar agent.jar -url http://192.168.241.134:8081/ -secret 14d5316d868ee678a249f63b9645e17bd252df7f212026d2225f9577b6d493c0 -name "subbu_python_files" -webSocket -workDir "/home/subbaramaiah_ch/Jenkins"
