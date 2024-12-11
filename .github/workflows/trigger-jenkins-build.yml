@@ -27,8 +27,15 @@ jobs:
           # Uninstall Git LFS if installed
           git lfs uninstall
 
-          # Remove all LFS-tracked files from the repository
-          git rm --cached $(git lfs ls-files | awk '{print $3}')
+          # Check if there are any LFS-tracked files
+          LFS_FILES=$(git lfs ls-files | awk '{print $3}')
+
+          if [ -n "$LFS_FILES" ]; then
+            echo "Removing LFS-tracked files..."
+            git rm --cached $LFS_FILES
+          else
+            echo "No LFS-tracked files found."
+          fi
 
           # Clean up the LFS cache
           git lfs clean
@@ -41,6 +48,13 @@ jobs:
           yes | git lfs migrate export --include="*"  # Force the migration to proceed non-interactively
 
           echo "Git LFS objects cleared."
+
+          # Remove any lingering LFS configuration
+          git config --unset-all filter.lfs.clean || true
+          git config --unset-all filter.lfs.smudge || true
+          git config --unset-all filter.lfs.process || true
+
+          echo "Git LFS configuration cleaned up."
 
       - name: Checkout repository
         uses: actions/checkout@v3
