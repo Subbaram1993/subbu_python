@@ -24,20 +24,11 @@ jobs:
         run: |
           echo "Clearing Git LFS objects..."
 
-          # Check if filter.lfs section exists before removing it
-          if git config --global --get-regexp filter.lfs; then
-            git config --global --remove-section filter.lfs
-          fi
-
           # Uninstall Git LFS if installed
           git lfs uninstall
 
-          # Only remove LFS-tracked files if there are any
-          if git lfs ls-files | grep -q .; then
-            git rm --cached $(git lfs ls-files | awk '{print $3}')
-          else
-            echo "No LFS-tracked files found."
-          fi
+          # Remove all LFS-tracked files from the repository
+          git rm --cached $(git lfs ls-files | awk '{print $3}')
 
           # Clean up the LFS cache
           git lfs clean
@@ -204,20 +195,15 @@ jobs:
             git fetch origin
             git stash push -m "Stashing untracked files"
             git pull --rebase origin main || {
-              echo "Merge conflict occurred. Attempting to resolve automatically."
+              echo "Merge conflict occurred. Attempting to resolve."
               git merge --abort
-              git stash pop || true
-              # Check if there's a merge conflict
-              if git ls-files -u | grep -q .; then
-                echo "Merge conflicts detected. Please resolve them manually."
-                exit 1
-              fi
+              exit 1
             }
 
-            git stash pop || true
+            # Commit changes
             git add "$JSON_FILE"
             git commit -S -m "Update build numbers in JSON for build ${{ env.LATEST_BUILD_NUMBER }} with status ${{ env.BUILD_STATUS }} [skip ci]"
             git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:${GITHUB_REF#refs/heads/}
           else
-            echo "No changes to commit."
+            echo "No changes detected."
           fi
