@@ -206,22 +206,12 @@ jobs:
           git config --global user.signingkey "${{ secrets.GPG_KEY_ID }}"
 
           # Check if there are changes to commit
-          if ! git diff --quiet; then
+          git diff --exit-code || {
             echo "Changes detected, preparing to commit."
-
-            # Attempt to pull with rebase
             git fetch origin
-            git stash push -m "Stashing untracked files"
-            git pull --rebase origin main || {
-              echo "Merge conflict occurred. Attempting to resolve."
-              git merge --abort
-              exit 1
-            }
+            git pull --rebase origin main
 
-            # Commit changes
             git add "$JSON_FILE"
             git commit -S -m "Update build numbers in JSON for build ${{ env.LATEST_BUILD_NUMBER }} with status ${{ env.BUILD_STATUS }} [skip ci]"
             git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:${GITHUB_REF#refs/heads/}
-          else
-            echo "No changes detected."
-          fi
+          }
