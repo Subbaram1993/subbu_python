@@ -195,7 +195,11 @@ jobs:
 
           # Import GPG private key and configure Git
           mkdir -p ~/.gnupg
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import || { echo "Failed to import GPG key"; exit 1; }
+
+          # Ensure key was imported successfully
+          gpg --list-secret-keys --keyid-format LONG
+
           git config user.name "${{ github.actor }}"
           git config user.email "${{ secrets.GIT_EMAIL }}"
           git config --global commit.gpgSign true
