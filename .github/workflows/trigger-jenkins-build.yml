@@ -193,23 +193,21 @@ jobs:
 
           echo "Build history updated in $JSON_FILE"
 
-          # Import GPG private key and configure Git
-          mkdir -p ~/.gnupg
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import || { echo "Failed to import GPG key"; exit 1; }
+          # Debugging: Check the contents of the file
+          cat "$JSON_FILE"
 
-          # Debugging step: Check if the key was imported successfully
-          gpg --list-secret-keys --keyid-format LONG || { echo "No GPG keys found. Exiting."; exit 1; }
-
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ secrets.GIT_EMAIL }}"
-          git config --global commit.gpgSign true
-          git config --global user.signingkey "${{ secrets.GPG_KEY_ID }}"
-
-          # Check if there are changes to commit
-          if ! git diff --quiet; then
+          # Check for changes before committing
+          git diff --exit-code --quiet
+          if [ $? -ne 0 ]; then
             echo "Changes detected, preparing to commit."
 
-            # Attempt to pull with rebase
+            # Configure git for commit
+            git config user.name "${{ github.actor }}"
+            git config user.email "${{ secrets.GIT_EMAIL }}"
+            git config --global commit.gpgSign true
+            git config --global user.signingkey "${{ secrets.GPG_KEY_ID }}"
+
+            # Pull the latest changes before committing
             git fetch origin
             git stash push -m "Stashing untracked files"
             git pull --rebase origin main || {
@@ -218,10 +216,12 @@ jobs:
               exit 1
             }
 
-            # Commit changes
+            # Add the JSON file to the commit
             git add "$JSON_FILE"
             git commit -S -m "Update build numbers in JSON for build ${{ env.LATEST_BUILD_NUMBER }} with status ${{ env.BUILD_STATUS }} [skip ci]"
+
+            # Push the changes to the repository
             git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:${GITHUB_REF#refs/heads/}
           else
-            echo "No changes detected."
+            echo "No changes detected, skipping commit."
           fi
