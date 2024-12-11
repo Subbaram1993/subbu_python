@@ -2,7 +2,51 @@
   "last_successful_build_number": 13,
   "build_history": [
     {
+      "build_number": 1,
+      "status": "FAILURE"
+    },
+    {
+      "build_number": 2,
+      "status": "FAILURE"
+    },
+    {
+      "build_number": 3,
+      "status": "SUCCESS"
+    },
+    {
+      "build_number": 4,
+      "status": "SUCCESS"
+    },
+    {
+      "build_number": 5,
+      "status": "SUCCESS"
+    },
+    {
+      "build_number": 6,
+      "status": "SUCCESS"
+    },
+    {
       "build_number": 7,
+      "status": "SUCCESS"
+    },
+    {
+      "build_number": 8,
+      "status": "SUCCESS"
+    },
+    {
+      "build_number": 9,
+      "status": "SUCCESS"
+    },
+    {
+      "build_number": 10,
+      "status": "SUCCESS"
+    },
+    {
+      "build_number": 11,
+      "status": "SUCCESS"
+    },
+    {
+      "build_number": 12,
       "status": "SUCCESS"
     },
     {
