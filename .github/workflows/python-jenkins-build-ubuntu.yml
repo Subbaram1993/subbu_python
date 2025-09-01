@@ -91,7 +91,7 @@ jobs:
         run: |
           TAG_NAME="${{ env.VERSION }}"
           echo "Incremented the TAG version: $TAG_NAME"
-          git tag -f "$TAG_NAME"
+          git tag -a -f "$TAG_NAME"
           git push origin --force "$TAG_NAME"
 
       # Push Changes
