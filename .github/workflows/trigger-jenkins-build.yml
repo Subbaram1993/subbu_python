@@ -203,9 +203,6 @@ jobs:
 
           echo "Build history updated in $JSON_FILE"
 
-          # Debugging: Check the contents of the file
-          cat "$JSON_FILE"
-
           # Check for changes before committing
           git add "$JSON_FILE"
           git diff --cached --quiet || git commit -m "Updated build numbers"
