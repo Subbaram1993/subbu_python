@@ -176,6 +176,12 @@ jobs:
           echo "BUILD_STATUS=${BUILD_STATUS}" >> $GITHUB_ENV
           echo "Build completed with status: $BUILD_STATUS"
 
+      - name: Disable GPG signing for CI
+        run: |
+          git config --global commit.gpgsign false
+          git config --global user.name "${{ secrets.GIT_ACTOR }}"
+          git config --global user.email "${{ secrets.GIT_EMAIL }}"
+
       - name: Update Build Numbers in JSON and Commit
         run: |
           # Define the JSON file path
