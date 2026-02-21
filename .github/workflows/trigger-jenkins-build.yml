@@ -84,17 +84,38 @@ jobs:
       - name: Fetch Latest Jenkins Build Number
         id: fetch-jenkins-build-number
         run: |
-          # Fetch the last build number from Jenkins
-          LATEST_BUILD_NUMBER_RESPONSE=$(curl -s -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+          set -o pipefail
+
+          # Fetch the last build number from Jenkins with HTTP validation
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+            -H "Accept: application/json" \
             "${{ secrets.JENKINS_URL }}/job/${{ env.JOB_NAME }}/lastBuild/api/json?tree=number")
 
-          # Parse the build number
-          LATEST_BUILD_NUMBER=$(echo "$LATEST_BUILD_NUMBER_RESPONSE" | jq -r '.number')
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1 | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed '$d')
 
-          # Check if the build number is valid
-          if [ -z "$LATEST_BUILD_NUMBER" ] || [ "$LATEST_BUILD_NUMBER" == "null" ]; then
-            echo "Error: No builds found for job '${{ env.JOB_NAME }}'."
+          echo "HTTP Status: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Error: Jenkins API call failed."
+            echo "Response:"
+            echo "$BODY"
             exit 1
+          fi
+
+          # Validate JSON before parsing
+          echo "$BODY" | jq empty 2>/dev/null || {
+            echo "Error: Invalid JSON returned from Jenkins"
+            echo "$BODY"
+            exit 1
+          }
+
+          LATEST_BUILD_NUMBER=$(echo "$BODY" | jq -r '.number')
+
+          if [ -z "$LATEST_BUILD_NUMBER" ] || [ "$LATEST_BUILD_NUMBER" == "null" ]; then
+            echo "No builds found for job '${{ env.JOB_NAME }}'. Setting build number to 0."
+            LATEST_BUILD_NUMBER=0
           fi
 
           echo "LATEST_BUILD_NUMBER=${LATEST_BUILD_NUMBER}" >> $GITHUB_ENV
