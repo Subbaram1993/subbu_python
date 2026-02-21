@@ -3,10 +3,10 @@ name: Python Build, Test, and Update Tag with Jenkins Build Number
 on:
   workflow_run:
     workflows:
-      - "Trigger Jenkins Build and Update Build Numbers"  # Name of the triggering workflow
+      - Trigger Jenkins Build and Update Build Numbers
     types:
       - completed
-    conclusion: success  # Ensure it runs only if trigger-jenkins-build.yml is successful
+    conclusion: success
 
 env:
   JENKINS_URL: ${{ secrets.JENKINS_URL }}
@@ -18,18 +18,15 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      # Checkout the repository
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Read the config.json and set the jobName as an environment variable
       - name: Set Job Name from config.json
         id: set_job_name
         run: |
           JOB_NAME=$(jq -r '.buildConfig.jobName' config.json)
           echo "JOB_NAME=${JOB_NAME}" >> $GITHUB_ENV
 
-      # Pull Latest Changes and Handle Conflicts
       - name: Pull Latest Changes and Handle Conflicts
         run: |
           git config user.name "${{ github.actor }}"
@@ -49,15 +46,36 @@ jobs:
           }
           git stash pop || echo "No stashed changes to apply"
 
-      # Fetch Latest Jenkins Build Number
       - name: Get Latest Jenkins Build Number
         id: get_jenkins_build_number
         run: |
-          BUILD_NUMBER=$(curl -s -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
-            "${{ secrets.JENKINS_URL }}/job/${{ env.JOB_NAME }}/lastSuccessfulBuild/buildNumber")
-          echo "BUILD_NUMBER=${BUILD_NUMBER}" >> $GITHUB_ENV
+          set -o pipefail
 
-      # Determine Version
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+            "${{ secrets.JENKINS_URL }}/job/${{ env.JOB_NAME }}/lastSuccessfulBuild/buildNumber")
+
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1 | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP Status: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Jenkins API failed."
+            echo "Response:"
+            echo "$BODY"
+            exit 1
+          fi
+
+          BUILD_NUMBER=$(echo "$BODY" | tr -d '[:space:]')
+
+          if [ -z "$BUILD_NUMBER" ]; then
+            echo "No successful build found. Defaulting to 0."
+            BUILD_NUMBER=0
+          fi
+
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+
       - name: Determine Version
         id: determine_version
         run: |
@@ -68,7 +86,6 @@ jobs:
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "Determined Version: $VERSION"
 
-      # Install Dependencies and Run Tests
       - name: Install Dependencies
         run: |
           python3 -m venv venv
@@ -77,16 +94,14 @@ jobs:
 
       - name: Run Tests
         run: |
-          #source venv/bin/activate
-          #pytest --junitxml=build/test-results.xml
+          # source venv/bin/activate
+          # pytest --junitxml=build/test-results.xml
 
-      # Save Artifacts in Repository (only if needed for further steps)
       - name: Save Changes to Repo (Without Artifacts)
         run: |
-          git add . # Add all changed files, skipping artifacts
+          git add .
           git commit -S -m "Add updated version ${{ env.VERSION }}" || echo "No changes to commit"
 
-      # Create and Push Tag
       - name: Create and Push Tag
         run: |
           TAG_NAME="${{ env.VERSION }}"
@@ -94,7 +109,6 @@ jobs:
           git tag -a -f "$TAG_NAME" -m "$TAG_NAME"
           git push origin --force "$TAG_NAME"
 
-      # Push Changes
       - name: Push Changes
         run: |
           git push origin main
